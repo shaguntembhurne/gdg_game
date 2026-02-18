@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Duck Hunt – Leaderboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@700;900&display=swap"
+    rel="stylesheet" />
+  <style>
+    /* ── Reset ── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ── Page ── */
+    body {
+      min-height: 100vh;
+      background-color: #1a1a2e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Nunito', sans-serif;
+      color: #fff;
+      padding: 24px 16px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background-color: #16213e;
+      border: 4px solid #0f3460;
+      border-radius: 20px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 8px 8px 0px #0f3460;
+    }
+
+    /* ── Header ── */
+    .game-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 20px;
+      color: #f5a623;
+      text-align: center;
+      line-height: 1.6;
+      margin-bottom: 6px;
+    }
+
+    .duck-emoji {
+      font-size: 40px;
+      text-align: center;
+      display: block;
+      margin-bottom: 10px;
+      animation: waddle 1.2s ease-in-out infinite alternate;
+    }
+
+    @keyframes waddle {
+      from {
+        transform: rotate(-8deg);
+      }
+
+      to {
+        transform: rotate(8deg);
+      }
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      color: #7ecfff;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-align: center;
+      margin: 28px 0 14px;
+    }
+
+    /* ── Leaderboard list ── */
+    .leaderboard {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .leaderboard-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background-color: #0f3460;
+      border: 3px solid #1a4a80;
+      border-radius: 14px;
+      padding: 14px 18px;
+      box-shadow: 4px 4px 0px #0a2040;
+      transition: transform 0.1s;
+    }
+
+    .leaderboard-item:hover {
+      transform: translateY(-2px);
+    }
+
+    .rank-badge {
+      font-size: 22px;
+      width: 32px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .player-name {
+      flex: 1;
+      font-size: 17px;
+      font-weight: 900;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .player-score {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+      color: #f5a623;
+      flex-shrink: 0;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #4a6fa5;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 20px 0;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 3px;
+      background-color: #0f3460;
+      border-radius: 2px;
+      margin: 28px 0;
+    }
+
+    /* ── Input group ── */
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .input-label {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      color: #7ecfff;
+      letter-spacing: 1px;
+    }
+
+    .name-input {
+      width: 100%;
+      padding: 14px 16px;
+      background-color: #0f3460;
+      border: 3px solid #1a4a80;
+      border-radius: 12px;
+      color: #fff;
+      font-family: 'Nunito', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .name-input::placeholder {
+      color: #4a6fa5;
+    }
+
+    .name-input:focus {
+      border-color: #7ecfff;
+    }
+
+    .error-msg {
+      font-size: 12px;
+      font-weight: 700;
+      color: #ff6b6b;
+      min-height: 18px;
+    }
+
+    /* ── Play button ── */
+    .play-btn {
+      width: 100%;
+      padding: 16px;
+      background-color: #f5a623;
+      border: none;
+      border-radius: 12px;
+      color: #1a1a2e;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #c07d10;
+      transition: transform 0.1s, box-shadow 0.1s;
+      letter-spacing: 1px;
+    }
+
+    .play-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 0 #c07d10;
+    }
+
+    .play-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 #c07d10;
+    }
+
+    /* ── Mobile portrait overlay ── */
+    @media (max-width: 768px) and (orientation: portrait) {
+      .rotate-overlay {
+        display: flex;
+      }
+    }
+
+    .rotate-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background-color: #1a1a2e;
+      z-index: 9999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .rotate-icon {
+      font-size: 64px;
+      animation: spin-phone 1.5s ease-in-out infinite;
+    }
+
+    @keyframes spin-phone {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      40% {
+        transform: rotate(90deg);
+      }
+
+      60% {
+        transform: rotate(90deg);
+      }
+
+      100% {
+        transform: rotate(0deg);
+      }
+    }
+
+    .rotate-text {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 12px;
+      color: #f5a623;
+      line-height: 2;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Portrait-mode overlay (mobile only) -->
+  <div class="rotate-overlay" id="rotate-overlay">
+    <span class="rotate-icon">📱</span>
+    <p class="rotate-text">Rotate your<br>device to play</p>
+  </div>
+
+  <div class="card">
+    <span class="duck-emoji">🦆</span>
+    <h1 class="game-title">DUCK HUNT</h1>
+
+    <p class="section-label">🏆 Top Players</p>
+    <ul class="leaderboard" id="leaderboard-list">
+      <li class="empty-state">Loading…</li>
+    </ul>
+
+    <div class="divider"></div>
+
+    <div class="input-group">
+      <label class="input-label" for="player-name">Your Name</label>
+      <input class="name-input" type="text" id="player-name" placeholder="Enter your name…" maxlength="32"
+        autocomplete="off" />
+      <p class="error-msg" id="error-msg"></p>
+      <button class="play-btn" id="play-btn" onclick="startGame()">▶ PLAY GAME</button>
+    </div>
+  </div>
+
+  <script>
+    const MEDALS = ['🥇', '🥈', '🥉'];
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    async function loadLeaderboard() {
+      const list = document.getElementById('leaderboard-list');
+      try {
+        const res = await fetch('/leaderboard');
+        const data = await res.json();
+
+        if (!data.length) {
+          list.innerHTML = '<li class="empty-state">No scores yet — be the first!</li>';
+          return;
+        }
+
+        list.innerHTML = data.map((entry, i) => `
+          <li class="leaderboard-item">
+            <span class="rank-badge">${MEDALS[i] || (i + 1)}</span>
+            <span class="player-name">${escapeHtml(entry.name)}</span>
+            <span class="player-score">${Number(entry.score).toLocaleString()}</span>
+          </li>
+        `).join('');
+      } catch {
+        list.innerHTML = '<li class="empty-state">Could not load scores.</li>';
+      }
+    }
+
+    function startGame() {
+      const input = document.getElementById('player-name');
+      const error = document.getElementById('error-msg');
+      const name = input.value.trim();
+
+      if (!name) {
+        error.textContent = 'Please enter your name first!';
+        input.focus();
+        return;
+      }
+
+      error.textContent = '';
+      sessionStorage.setItem('playerName', name);
+      window.location.href = '/game';
+    }
+
+    document.getElementById('player-name').addEventListener('keydown', e => {
+      if (e.key === 'Enter') startGame();
+    });
+
+    // Portrait overlay via JS (supplements CSS media query for dynamic changes)
+    function checkOrientation() {
+      const overlay = document.getElementById('rotate-overlay');
+      const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+      const isPortrait = window.innerHeight > window.innerWidth;
+      overlay.style.display = (isMobile && isPortrait) ? 'flex' : 'none';
+    }
+
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    checkOrientation();
+
+    loadLeaderboard();
+  </script>
+</body>
+
+</html>

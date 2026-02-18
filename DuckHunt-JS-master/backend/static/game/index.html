@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Duck Hunt – Play</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@700;900&display=swap"
+        rel="stylesheet" />
+    <style>
+        /* ── Reset ── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        /* ── Portrait / rotate overlay ── */
+        .rotate-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: #1a1a2e;
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            text-align: center;
+            padding: 24px;
+        }
+
+        /* CSS media query handles initial state */
+        @media (max-width: 768px) and (orientation: portrait) {
+            .rotate-overlay {
+                display: flex;
+            }
+
+            body canvas {
+                display: none;
+            }
+        }
+
+        .rotate-icon {
+            font-size: 64px;
+            animation: spin-phone 1.5s ease-in-out infinite;
+        }
+
+        @keyframes spin-phone {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            40% {
+                transform: rotate(90deg);
+            }
+
+            60% {
+                transform: rotate(90deg);
+            }
+
+            100% {
+                transform: rotate(0deg);
+            }
+        }
+
+        .rotate-text {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 12px;
+            color: #f5a623;
+            line-height: 2;
+        }
+
+        /* ── Score submission overlay ── */
+        .submit-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.80);
+            z-index: 8000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .submit-overlay.visible {
+            display: flex;
+        }
+
+        .submit-box {
+            background-color: #16213e;
+            border: 4px solid #f5a623;
+            border-radius: 20px;
+            padding: 36px 44px;
+            text-align: center;
+            color: #fff;
+            max-width: 340px;
+            width: 90%;
+            box-shadow: 8px 8px 0px #c07d10;
+        }
+
+        .submit-box h2 {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 14px;
+            color: #f5a623;
+            margin-bottom: 16px;
+            line-height: 1.8;
+        }
+
+        .submit-score-value {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 32px;
+            color: #7ecfff;
+            margin: 12px 0 20px;
+        }
+
+        .submit-status {
+            font-family: 'Nunito', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.65);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Portrait-mode overlay -->
+    <div class="rotate-overlay" id="rotate-overlay">
+        <span class="rotate-icon">📱</span>
+        <p class="rotate-text">Rotate your<br>device to play</p>
+    </div>
+
+    <!-- Score submission overlay (shown on game end) -->
+    <div class="submit-overlay" id="submit-overlay">
+        <div class="submit-box">
+            <h2>🎯 GAME OVER</h2>
+            <p class="submit-status">Your score</p>
+            <div class="submit-score-value" id="final-score-display">0</div>
+            <p class="submit-status" id="submit-status">Saving score…</p>
+        </div>
+    </div>
+
+    <script>
+        /* ── Player name (set on leaderboard page) ── */
+        var PLAYER_NAME = sessionStorage.getItem('playerName') || 'Anonymous';
+
+        /* ── Orientation enforcement ── */
+        function checkOrientation() {
+            var overlay = document.getElementById('rotate-overlay');
+            var isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+            var isPortrait = window.innerHeight > window.innerWidth;
+
+            if (isMobile && isPortrait) {
+                overlay.style.display = 'flex';
+                // Pause game canvas interaction while in portrait
+                var canvas = document.querySelector('canvas');
+                if (canvas) canvas.style.display = 'none';
+            } else {
+                overlay.style.display = 'none';
+                var canvas = document.querySelector('canvas');
+                if (canvas) canvas.style.display = '';
+            }
+        }
+
+        window.addEventListener('resize', checkOrientation);
+        window.addEventListener('orientationchange', function () {
+            // Small delay to let the browser finish rotating
+            setTimeout(checkOrientation, 150);
+        });
+
+        /* ── Score submission hook (called by Game.js on win/loss) ── */
+        window.onGameEnd = function (score) {
+            var overlay = document.getElementById('submit-overlay');
+            var scoreDisplay = document.getElementById('final-score-display');
+            var statusEl = document.getElementById('submit-status');
+
+            scoreDisplay.textContent = Number(score).toLocaleString();
+            overlay.classList.add('visible');
+
+            fetch('/submit-score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: PLAYER_NAME, score: score })
+            })
+                .then(function (res) {
+                    statusEl.textContent = res.ok
+                        ? 'Score saved! Returning to leaderboard…'
+                        : 'Could not save score. Returning…';
+                })
+                .catch(function () {
+                    statusEl.textContent = 'Network error. Returning…';
+                })
+                .finally(function () {
+                    setTimeout(function () { window.location.href = '/'; }, 3000);
+                });
+        };
+    </script>
+
+    <!-- Duck Hunt game bundle -->
+    <script src="/static/game/duckhunt.js"></script>
+
+    <!-- Run orientation check after game canvas is created -->
+    <script>
+        // Delay slightly so the game canvas is in the DOM
+        setTimeout(checkOrientation, 300);
+    </script>
+
+</body>
+
+</html>
