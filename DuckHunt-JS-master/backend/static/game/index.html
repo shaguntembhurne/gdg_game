@@ -152,8 +152,9 @@
     </div>
 
     <script>
-        /* ── Player name (set on leaderboard page) ── */
+        /* ── Player details (set on leaderboard page) ── */
         var PLAYER_NAME = sessionStorage.getItem('playerName') || 'Anonymous';
+        var PLAYER_PHONE = sessionStorage.getItem('playerPhone') || '';
 
         /* ── Orientation enforcement ── */
         function checkOrientation() {
@@ -191,7 +192,7 @@
             fetch('/submit-score', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: PLAYER_NAME, score: score })
+                body: JSON.stringify({ name: PLAYER_NAME, phone: PLAYER_PHONE, score: score })
             })
                 .then(function (res) {
                     statusEl.textContent = res.ok

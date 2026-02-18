@@ -62,10 +62,16 @@ def submit_score():
     data = request.get_json(force=True, silent=True)
     if not data or not str(data.get('name', '')).strip():
         return jsonify({'error': 'name is required'}), 400
+    if not str(data.get('phone', '')).strip():
+        return jsonify({'error': 'phone is required'}), 400
     name  = str(data['name']).strip()
+    phone = str(data['phone']).strip()
     score = int(data.get('score', 0))
     conn  = get_db()
-    conn.execute('INSERT INTO scores (name, score) VALUES (?, ?)', (name, score))
+    conn.execute(
+        'INSERT INTO scores (name, phone, score) VALUES (?, ?, ?)',
+        (name, phone, score)
+    )
     conn.commit()
     conn.close()
     return jsonify({'status': 'ok'})

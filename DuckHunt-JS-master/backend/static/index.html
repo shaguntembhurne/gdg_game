@@ -10,7 +10,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@700;900&display=swap"
     rel="stylesheet" />
   <style>
-    /* ── Reset ── */
     *,
     *::before,
     *::after {
@@ -19,7 +18,6 @@
       padding: 0;
     }
 
-    /* ── Page ── */
     body {
       min-height: 100vh;
       background-color: #1a1a2e;
@@ -31,7 +29,6 @@
       padding: 24px 16px;
     }
 
-    /* ── Card ── */
     .card {
       background-color: #16213e;
       border: 4px solid #0f3460;
@@ -42,7 +39,6 @@
       box-shadow: 8px 8px 0px #0f3460;
     }
 
-    /* ── Header ── */
     .game-title {
       font-family: 'Press Start 2P', monospace;
       font-size: 20px;
@@ -70,7 +66,6 @@
       }
     }
 
-    /* ── Section label ── */
     .section-label {
       font-family: 'Press Start 2P', monospace;
       font-size: 9px;
@@ -81,7 +76,6 @@
       margin: 28px 0 14px;
     }
 
-    /* ── Leaderboard list ── */
     .leaderboard {
       list-style: none;
       display: flex;
@@ -137,7 +131,6 @@
       padding: 20px 0;
     }
 
-    /* ── Divider ── */
     .divider {
       height: 3px;
       background-color: #0f3460;
@@ -145,7 +138,6 @@
       margin: 28px 0;
     }
 
-    /* ── Input group ── */
     .input-group {
       display: flex;
       flex-direction: column;
@@ -188,7 +180,6 @@
       min-height: 18px;
     }
 
-    /* ── Play button ── */
     .play-btn {
       width: 100%;
       padding: 16px;
@@ -214,13 +205,7 @@
       box-shadow: 0 2px 0 #c07d10;
     }
 
-    /* ── Mobile portrait overlay ── */
-    @media (max-width: 768px) and (orientation: portrait) {
-      .rotate-overlay {
-        display: flex;
-      }
-    }
-
+    /* Portrait overlay */
     .rotate-overlay {
       display: none;
       position: fixed;
@@ -233,6 +218,12 @@
       gap: 20px;
       text-align: center;
       padding: 24px;
+    }
+
+    @media (max-width: 768px) and (orientation: portrait) {
+      .rotate-overlay {
+        display: flex;
+      }
     }
 
     .rotate-icon {
@@ -269,7 +260,6 @@
 
 <body>
 
-  <!-- Portrait-mode overlay (mobile only) -->
   <div class="rotate-overlay" id="rotate-overlay">
     <span class="rotate-icon">📱</span>
     <p class="rotate-text">Rotate your<br>device to play</p>
@@ -290,6 +280,11 @@
       <label class="input-label" for="player-name">Your Name</label>
       <input class="name-input" type="text" id="player-name" placeholder="Enter your name…" maxlength="32"
         autocomplete="off" />
+
+      <label class="input-label" for="player-phone">Phone Number</label>
+      <input class="name-input" type="tel" id="player-phone" placeholder="e.g. 9876543210" maxlength="15"
+        autocomplete="tel" />
+
       <p class="error-msg" id="error-msg"></p>
       <button class="play-btn" id="play-btn" onclick="startGame()">▶ PLAY GAME</button>
     </div>
@@ -309,14 +304,12 @@
     async function loadLeaderboard() {
       const list = document.getElementById('leaderboard-list');
       try {
-        const res = await fetch('/leaderboard');
+        const res  = await fetch('/leaderboard');
         const data = await res.json();
-
         if (!data.length) {
           list.innerHTML = '<li class="empty-state">No scores yet — be the first!</li>';
           return;
         }
-
         list.innerHTML = data.map((entry, i) => `
           <li class="leaderboard-item">
             <span class="rank-badge">${MEDALS[i] || (i + 1)}</span>
@@ -330,33 +323,44 @@
     }
 
     function startGame() {
-      const input = document.getElementById('player-name');
-      const error = document.getElementById('error-msg');
-      const name = input.value.trim();
+      const nameInput  = document.getElementById('player-name');
+      const phoneInput = document.getElementById('player-phone');
+      const error      = document.getElementById('error-msg');
+
+      const name  = nameInput.value.trim();
+      const phone = phoneInput.value.trim();
 
       if (!name) {
-        error.textContent = 'Please enter your name first!';
-        input.focus();
+        error.textContent = 'Please enter your name!';
+        nameInput.focus();
+        return;
+      }
+      if (!phone) {
+        error.textContent = 'Please enter your phone number!';
+        phoneInput.focus();
         return;
       }
 
       error.textContent = '';
-      sessionStorage.setItem('playerName', name);
+      sessionStorage.setItem('playerName',  name);
+      sessionStorage.setItem('playerPhone', phone);
       window.location.href = '/game';
     }
 
-    document.getElementById('player-name').addEventListener('keydown', e => {
+    document.getElementById('player-phone').addEventListener('keydown', e => {
       if (e.key === 'Enter') startGame();
     });
+    document.getElementById('player-name').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('player-phone').focus();
+    });
 
-    // Portrait overlay via JS (supplements CSS media query for dynamic changes)
+    // Portrait overlay
     function checkOrientation() {
-      const overlay = document.getElementById('rotate-overlay');
-      const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+      const overlay   = document.getElementById('rotate-overlay');
+      const isMobile  = window.innerWidth <= 768 || 'ontouchstart' in window;
       const isPortrait = window.innerHeight > window.innerWidth;
       overlay.style.display = (isMobile && isPortrait) ? 'flex' : 'none';
     }
-
     window.addEventListener('resize', checkOrientation);
     window.addEventListener('orientationchange', checkOrientation);
     checkOrientation();
