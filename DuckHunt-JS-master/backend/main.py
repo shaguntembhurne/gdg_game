@@ -1,81 +1,107 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from flask import Flask, request, jsonify, send_from_directory, send_file
 import os
+import sqlite3
 
-from database import init_db, get_connection
+app = Flask(__name__)
 
-app = FastAPI()
-
-# Initialize DB on startup
-init_db()
-
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-
-
-class ScoreSubmission(BaseModel):
-    name: str
-    score: int
+# ── Paths ──────────────────────────────────────────────────────────────────
+BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR  = os.path.join(BASE_DIR, 'static')
+GAME_DIR    = os.path.join(STATIC_DIR, 'game')
+DB_PATH     = os.path.join(BASE_DIR, 'scores.db')
 
 
-@app.get("/leaderboard")
-def get_leaderboard():
-    conn = get_connection()
-    rows = conn.execute(
-        "SELECT name, score FROM scores ORDER BY score DESC LIMIT 3"
-    ).fetchall()
-    conn.close()
-    return [{"name": row["name"], "score": row["score"]} for row in rows]
+# ── Database ────────────────────────────────────────────────────────────────
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
-@app.post("/submit-score")
-def submit_score(data: ScoreSubmission):
-    if not data.name or not data.name.strip():
-        raise HTTPException(status_code=400, detail="Name is required")
-    conn = get_connection()
-    conn.execute(
-        "INSERT INTO scores (name, score) VALUES (?, ?)",
-        (data.name.strip(), data.score),
-    )
+def init_db():
+    conn = get_db()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS scores (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT    NOT NULL,
+            score      INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     conn.commit()
     conn.close()
-    return {"status": "ok"}
 
 
-GAME_ASSETS_DIR = os.path.join(STATIC_DIR, "game")
-
-# duckhunt.js requests these assets relative to the page URL (/game),
-# so the browser resolves them to the root level (e.g. /sprites.json).
-@app.get("/sprites.json")
-def serve_sprites_json():
-    return FileResponse(os.path.join(GAME_ASSETS_DIR, "sprites.json"))
-
-@app.get("/sprites.png")
-def serve_sprites_png():
-    return FileResponse(os.path.join(GAME_ASSETS_DIR, "sprites.png"))
-
-@app.get("/audio.json")
-def serve_audio_json():
-    return FileResponse(os.path.join(GAME_ASSETS_DIR, "audio.json"))
-
-@app.get("/audio.mp3")
-def serve_audio_mp3():
-    return FileResponse(os.path.join(GAME_ASSETS_DIR, "audio.mp3"))
-
-@app.get("/audio.ogg")
-def serve_audio_ogg():
-    return FileResponse(os.path.join(GAME_ASSETS_DIR, "audio.ogg"))
-
-@app.get("/game")
-def serve_game():
-    return FileResponse(os.path.join(STATIC_DIR, "game", "index.html"))
+init_db()
 
 
-@app.get("/")
-def serve_index():
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+# ── Pages ───────────────────────────────────────────────────────────────────
+@app.route('/')
+def index():
+    return send_file(os.path.join(STATIC_DIR, 'index.html'))
 
 
-# Mount static files AFTER explicit routes
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+@app.route('/game')
+def game():
+    return send_file(os.path.join(GAME_DIR, 'index.html'))
+
+
+# ── API ─────────────────────────────────────────────────────────────────────
+@app.route('/leaderboard')
+def leaderboard():
+    conn = get_db()
+    rows = conn.execute(
+        'SELECT name, score FROM scores ORDER BY score DESC LIMIT 3'
+    ).fetchall()
+    conn.close()
+    return jsonify([{'name': r['name'], 'score': r['score']} for r in rows])
+
+
+@app.route('/submit-score', methods=['POST'])
+def submit_score():
+    data = request.get_json(force=True, silent=True)
+    if not data or not str(data.get('name', '')).strip():
+        return jsonify({'error': 'name is required'}), 400
+    name  = str(data['name']).strip()
+    score = int(data.get('score', 0))
+    conn  = get_db()
+    conn.execute('INSERT INTO scores (name, score) VALUES (?, ?)', (name, score))
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'ok'})
+
+
+# ── Game assets (requested at root level by duckhunt.js) ────────────────────
+@app.route('/sprites.json')
+def sprites_json():
+    return send_from_directory(GAME_DIR, 'sprites.json')
+
+
+@app.route('/sprites.png')
+def sprites_png():
+    return send_from_directory(GAME_DIR, 'sprites.png')
+
+
+@app.route('/audio.json')
+def audio_json():
+    return send_from_directory(GAME_DIR, 'audio.json')
+
+
+@app.route('/audio.mp3')
+def audio_mp3():
+    return send_from_directory(GAME_DIR, 'audio.mp3')
+
+
+@app.route('/audio.ogg')
+def audio_ogg():
+    return send_from_directory(GAME_DIR, 'audio.ogg')
+
+
+# ── Static files (/static/**) ────────────────────────────────────────────────
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory(STATIC_DIR, filename)
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
